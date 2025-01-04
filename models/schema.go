@@ -172,43 +172,28 @@ func GetClients() []Client {
 }
 
 
-func CreateUsers(pool *pgxpool.Pool, user User) error {
+func CreateUser(pool *pgxpool.Pool, user User) error {
 	ctx := context.Background()
 
+	query := `
+		INSERT INTO users (
+			first_name, last_name, surname, email, mobile_number, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7
+		)
+	`
+
+	_, err := pool.Exec(ctx, query, user.FirstName, user.LastName, user.Surname, user.Email, user.MobileNumber, time.Now(), time.Now())
+	if err != nil {
+		return fmt.Errorf("query execution failed: %w", err)
+	}
+
+	return nil
+
 }
 
-func createClient(client Client) (Client, error) {
-	return client, nil
-}
 
-func createToken(token Token) (Token, error) {
-	return token, nil
-}
 
-func createSession(session Session) (Session, error) {
-	return session, nil
-}
-
-func getUserByEmail(email string) (User, error) {
-	return User{}, nil
-}
-
-func getUserById(id int64) (User, error) {
-	return User{}, nil
-}
-
-func getClientById(id int64) (Client, error) {
-	return Client{}, nil
-}
-
-func getClientByClientId(client_id string) (Client, error) {
-
-	return Client{}, nil
-}
-
-func getTokenByToken(token string, token_type string) (Token, error) {
-	return Token{}, nil
-}
 
 // nullableString handles *string and returns a readable string
 func NullableString(s *string) string {

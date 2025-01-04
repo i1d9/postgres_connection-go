@@ -96,7 +96,30 @@ func main() {
 		case "1":
 			listUsers(dbpool)
 		case "2":
-			fmt.Println("two")
+			
+
+			firstName := getConsoleInput("Enter First Name: ")
+			lastName := getConsoleInput("Enter Last Name: ")
+			surname := getConsoleInput("Enter Surname: ")
+			email := getConsoleInput("Enter Email: ")
+			mobileNumber := getConsoleInput("Enter Mobile Number: ")
+			gender := getConsoleInput("Enter Gender: ")
+
+			user := models.User{
+				FirstName:    &firstName,
+				LastName:     &lastName,
+				Surname:      &surname,
+				Email:        &email,
+				MobileNumber: &mobileNumber,
+				Gender:       &gender,
+			}
+
+			err := models.CreateUser(dbpool, user)
+			if err != nil {
+				log.Fatalf("Error creating user: %v\n", err)
+			} else {
+				fmt.Println("User created successfully")
+			}
 		case "3":
 
 			userID := getConsoleInput("\nEnter the User ID to be deleted\n-> ")
