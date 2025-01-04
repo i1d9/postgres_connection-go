@@ -1,44 +1,54 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/i1d9/postgres_connection-go/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/viper"
+	"strconv"
 )
 
-func main() {
-
-	viper.AddConfigPath(".") // look for config in the working directory
-
-	viper.SetConfigFile(".env")
-	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil {             // Handle errors reading the config file
-		panic(fmt.Errorf("fatal error config file: %w", err))
-	}
-
-	database_url := viper.GetString("DATABASE_URL")
-
+func createDatabaseConnectionPool() (*pgxpool.Pool, error) {
 	// Create a new connection pool
+	database_url := viper.GetString("DATABASE_URL")
 	dbpool, err := pgxpool.New(context.Background(), database_url)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
 		os.Exit(1)
 	}
-	defer dbpool.Close()
 
-	// models.InitiateDatabase(dbpool, context.Background())
+	return dbpool, err
 
-	users, err := models.GetAllUsers(dbpool)
+}
 
+func loadConfig() {
+	viper.SetConfigName(".env")
+	viper.AddConfigPath(".")
+	viper.AutomaticEnv()
+	viper.SetConfigType("env")
+
+	err := viper.ReadInConfig()
 	if err != nil {
-		log.Fatalf("Error fetching users: %v\n", err)
+		log.Fatalf("Error reading config file, %s", err)
 	}
+}
 
+func getConsoleInput(message string) string {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print(message)
+	text1, _ := reader.ReadString('\n')
+	text1 = strings.Replace(text1, "\n", "", -1)
+	return text1
+
+}
+
+func renderUsers(users []models.User) {
 	for i, user := range users {
 		fmt.Printf("User %d:\n", i+1)
 		fmt.Printf("  ID: %d\n", user.ID)
@@ -55,9 +65,71 @@ func main() {
 		fmt.Printf("  Last Login At: %s\n", models.NullableTime(user.LastLoginAt))
 		fmt.Printf("  Deleted At: %s\n", models.NullableTime(user.DeletedAt))
 
-		fmt.Println("  ---")
+		fmt.Println("  ---\n")
+	}
+}
+
+func listUsers(dbpool *pgxpool.Pool) {
+
+	users, err := models.GetAllUsers(dbpool)
+
+	if err != nil {
+		log.Fatalf("Error fetching users: %v\n", err)
 	}
 
-	
+	renderUsers(users)
+
+}
+
+func main() {
+
+	loadConfig()
+	dbpool, _ := createDatabaseConnectionPool()
+	defer dbpool.Close()
+	for {
+		fmt.Println("\nUser Management CLI")
+		fmt.Println("---------------------")
+
+		mainInput := getConsoleInput("1. List\n2. Create\n3. Delete\n4. Search\n5. Exit\n-> ")
+
+		switch mainInput {
+		case "1":
+			listUsers(dbpool)
+		case "2":
+			fmt.Println("two")
+		case "3":
+
+			userID := getConsoleInput("\nEnter the User ID to be deleted\n-> ")
+			user_id, err := strconv.Atoi(userID)
+			if err != nil {
+				log.Fatalf("Error searching for users: %v\n", err)
+			}
+			result := models.DeleteUser(dbpool, user_id)
+
+			if result != nil {
+				log.Fatalf("Error deleting the specified user: %v\n", result)
+			}else
+			{
+				fmt.Println("User Deleted Successfully")
+			}
+
+		case "4":
+			searchTerm := getConsoleInput("\nSearch.\nWho are you looking for?\n-> ")
+
+			users, err := models.SearchUsers(dbpool, searchTerm)
+
+			if err != nil {
+				log.Fatalf("Error searching for users: %v\n", err)
+			}
+			fmt.Printf("\nFound %d users\n", len(users))
+			renderUsers(users)
+
+		case "5":
+			os.Exit(0)
+		case "q":
+			os.Exit(0)
+		}
+
+	}
 
 }
